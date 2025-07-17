@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Workout Timer</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 50px;
+      background: #111;
+      color: white;
+    }
+    #phase {
+      font-size: 2em;
+      margin-top: 20px;
+    }
+    #time {
+      font-size: 6em;
+      margin-top: 10px;
+    }
+    #progress {
+      margin-top: 30px;
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #bar {
+      height: 100%;
+      width: 0%;
+      background: lime;
+      transition: width 1s linear;
+    }
+    button {
+      margin-top: 30px;
+      padding: 10px 20px;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Workout Timer</h1>
+  <div id="phase">Bereit?</div>
+  <div id="time">00:10</div>
+  <div id="progress"><div id="bar"></div></div>
+  <button onclick="startWorkout()">▶ Start</button>
+
+  <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+  <script>
+    const beep = document.getElementById("beep");
+    const phaseElem = document.getElementById("phase");
+    const timeElem = document.getElementById("time");
+    const bar = document.getElementById("bar");
+
+    const workout = [];
+    const addPhase = (label, duration, speech = label, playBeep = false) => {
+      workout.push({ label, duration, speech, playBeep });
+    };
+
+    const pauseText = (duration) => `${duration} Minuten Pause`;
+
+    addPhase("Start in...", 10, "Workout startet in 10 Sekunden");
+
+    const longBreaks = [60, 120, 60, 120, 60, 120, 0];
+
+    for (let i = 0; i < 7; i++) {
+      const nr = i + 1;
+      addPhase(`Übung ${nr} - Set 1`, 60, "Set 1", true);
+      addPhase("Pause", 15, "Pause", true);
+      addPhase(`Übung ${nr} - Set 2`, 50, "Set 2", true);
+      addPhase("Pause", 10, "Pause", true);
+      addPhase(`Übung ${nr} - Set 3`, 45, "Set 3", true);
+      addPhase("Stop & Switch", 1, "Stop and Switch");
+      const breakTime = longBreaks[i];
+      if (breakTime > 0) {
+        addPhase(`Große Pause`, breakTime, pauseText(breakTime / 60));
+      }
+    }
+
+    function speak(text) {
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.lang = "de-DE";
+      window.speechSynthesis.speak(msg);
+    }
+
+    let index = 0;
+    let remaining = 0;
+    let timer = null;
+    const totalDuration = workout.reduce((sum, phase) => sum + phase.duration, 0);
+    let elapsed = 0;
+
+    function startWorkout() {
+      document.querySelector("button").disabled = true;
+      nextPhase();
+    }
+
+    function nextPhase() {
+      if (index >= workout.length) {
+        phaseElem.textContent = "Workout abgeschlossen! 🎉";
+        timeElem.textContent = "00:00";
+        bar.style.width = "100%";
+        speak("Workout abgeschlossen!");
+        return;
+      }
+
+      const phase = workout[index];
+      phaseElem.textContent = phase.label;
+      remaining = phase.duration;
+
+      if (phase.speech) speak(phase.speech);
+      if (phase.playBeep) beep.play();
+
+      updateTimeDisplay();
+      updateProgressBar();
+
+      timer = setInterval(() => {
+        remaining--;
+        elapsed++;
+        updateTimeDisplay();
+        updateProgressBar();
+        if (remaining <= 0) {
+          clearInterval(timer);
+          index++;
+          nextPhase();
+        }
+      }, 1000);
+    }
+
+    function updateTimeDisplay() {
+      const min = String(Math.floor(remaining / 60)).padStart(2, '0');
+      const sec = String(remaining % 60).padStart(2, '0');
+      timeElem.textContent = `${min}:${sec}`;
+    }
+
+    function updateProgressBar() {
+      const progress = Math.min(100, (elapsed / totalDuration) * 100);
+      bar.style.width = `${progress}%`;
+    }
+  </script>
+</body>
+</html>
